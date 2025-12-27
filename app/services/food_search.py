@@ -242,8 +242,9 @@ class FoodSearchService:
         # Replace punctuation with spaces
         name = name.replace(',', ' ').replace('-', ' ').replace('/', ' ')
         
-        # Remove extra words that don't affect meaning
-        remove_words = ['raw', 'fresh', 'cooked', 'dried', 'frozen', 'canned', 'organic']
+        # Remove only minimally impactful words
+        # Note: We keep 'cooked', 'dried' etc as they affect caloric content
+        remove_words = ['organic', 'fresh']
         words = name.split()
         words = [w for w in words if w not in remove_words]
         

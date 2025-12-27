@@ -132,8 +132,8 @@ Just type your question and I'll help you!"""
     def generate_calorie_response(self, result: CalorieResult, language: str = "english") -> str:
         """Generate response for calorie result"""
         food_name = result.food_name.title() if result.food_name else "Unknown"
-        total_cal = int(result.total_calories) if result.total_calories else 0
-        total_weight = int(result.weight_g) if result.weight_g else 0
+        total_cal = round(result.total_calories) if result.total_calories else 0
+        total_weight = round(result.weight_g) if result.weight_g else 0
         
         if language == "arabic":
             accuracy_note = "\n(هذا تقدير تقريبي)" if result.is_approximate else ""
@@ -148,8 +148,8 @@ Just type your question and I'll help you!"""
             if result.ingredients and len(result.ingredients) > 0:
                 response += "\nتفصيل المكونات:\n"
                 for ing in result.ingredients[:10]:
-                    ing_cal = int(ing.calories) if ing.calories else 0
-                    ing_weight = int(ing.weight_g) if ing.weight_g else 0
+                    ing_cal = round(ing.calories) if ing.calories else 0
+                    ing_weight = round(ing.weight_g) if ing.weight_g else 0
                     response += f"  - {ing.name}: {ing_cal} سعرة ({ing_weight} جرام)\n"
             
             if result.modifications:
@@ -172,8 +172,8 @@ Nutrition Information:
             if result.ingredients and len(result.ingredients) > 0:
                 response += "\nIngredients breakdown:\n"
                 for ing in result.ingredients[:10]:
-                    ing_cal = int(ing.calories) if ing.calories else 0
-                    ing_weight = int(ing.weight_g) if ing.weight_g else 0
+                    ing_cal = round(ing.calories) if ing.calories else 0
+                    ing_weight = round(ing.weight_g) if ing.weight_g else 0
                     response += f"  - {ing.name}: {ing_cal} kcal ({ing_weight}g)\n"
             
             if result.modifications:

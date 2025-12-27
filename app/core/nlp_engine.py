@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 class NLPEngine:
     """Advanced NLP engine - translates ONLY Arabic script, not Latin text! """
     
+    # Configuration constants
+    FUZZY_MATCH_THRESHOLD = 80  # Minimum score for fuzzy matching
+    MIN_WORD_LENGTH = 2  # Minimum length for meaningful words
+    
     def __init__(self):
         self.translator = None
         self.semantic_model = None
@@ -110,7 +114,7 @@ class NLPEngine:
                     # Use fuzzy matching for typos
                     from rapidfuzz import fuzz
                     score = fuzz.ratio(word, correct_word)
-                    if score > 80 and score > best_score:
+                    if score > self.FUZZY_MATCH_THRESHOLD and score > best_score:
                         best_score = score
                         corrected = correct_word
                     
@@ -185,7 +189,8 @@ class NLPEngine:
     def _is_franco_arabic(self, text: str) -> bool:
         """Check if text is Franco-Arabic (Latin + numbers like 7, 3, 2)"""
         has_latin = bool(re.search(r'[a-zA-Z]', text))
-        has_franco_numbers = bool(re.search(r'[2357]', text))
+        # Only specific Franco numbers, not all numbers
+        has_franco_numbers = bool(re.search(r'[2357](?![0-9])', text))  # Franco numbers not followed by other digits
         return has_latin and has_franco_numbers
     
     def _detect_language(self, text: str) -> str:
@@ -203,6 +208,7 @@ class NLPEngine:
         - If Latin text (English/Franco): just clean it, DON'T translate! 
         """
         result = text.strip()
+        is_franco = self._is_franco_arabic(text)  # Check original text only
         
         # ONLY translate if text has Arabic script
         if has_arabic and self.translator:
@@ -219,7 +225,8 @@ class NLPEngine:
         result = result.lower()
         
         # Handle Franco-Arabic numbers (for Franco text) - Improved mapping
-        if self._is_franco_arabic(text) or any(char in result for char in '23578'):
+        # Only if original text was Franco-Arabic
+        if is_franco:
             franco_numbers = {
                 '2': 'aa',  # More accurate: hamza/glottal stop → aa
                 '3': 'aa',  # 'ayn → aa
@@ -297,7 +304,7 @@ class NLPEngine:
             # If cleaning removed everything, try to extract any meaningful words
             words = text_lower.split()
             skip_words = {'the', 'a', 'an', 'in', 'of', 'for', 'calories', 'calorie', 'kcal', 'cal', 'how', 'many', 'much'}
-            meaningful = [w for w in words if w not in skip_words and len(w) > 2]
+            meaningful = [w for w in words if w not in skip_words and len(w) > self.MIN_WORD_LENGTH]
             if meaningful:
                 cleaned = ' '.join(meaningful)
         
