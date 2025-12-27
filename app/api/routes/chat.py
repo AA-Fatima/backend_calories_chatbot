@@ -132,7 +132,7 @@ async def get_session(session_id: str):
     conversation_manager = get_conversation_manager()
     if not conversation_manager:
         raise HTTPException(status_code=500, detail="Conversation manager not initialized")
-    session = conversation_manager.get_session(session_id)
+    session = conversation_manager.get_session('1')
     if not session: 
         raise HTTPException(status_code=404, detail="Session not found")
     return session
