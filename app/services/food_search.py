@@ -137,17 +137,41 @@ class FoodSearchService:
                 item_words = item["name"].replace(',', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').lower().split()
                 item_words = [w for w in item_words if w]  # Remove empty strings
                 
+                # Calculate base score
+                base_score = 0.0
+                is_first_word_match = False
+                
                 # BEST: Query matches the FIRST word exactly
                 if item_words and item_words[0] == query_lower:
-                    word_matches.append((item, 0.95))
+                    base_score = 0.95
+                    is_first_word_match = True
+                # Handle plural forms: "apple" matches "apples" (first word)
+                elif item_words and (item_words[0] == query_lower + 's' or item_words[0] == query_lower + 'es'):
+                    base_score = 0.94
+                    is_first_word_match = True
                 # GOOD: Query is a complete word in the name
                 elif query_lower in item_words:
-                    word_matches.append((item, 0.85))
+                    base_score = 0.85
                 # OK: Query is at start of first word (e.g., "chick" matches "chicken")
                 elif item_words and item_words[0].startswith(query_lower) and len(query_lower) >= 4:
-                    word_matches.append((item, 0.75))
+                    base_score = 0.75
+                
+                # Apply score adjustments
+                if base_score > 0:
+                    # Prefer shorter names (more specific)
+                    # E.g., "Apples, raw" (2 words) > "Apple juice, unsweetened" (3 words)
+                    word_count = len(item_words)
+                    word_count_penalty = min(word_count * 0.01, 0.05)  # Max 5% penalty
+                    
+                    # Bonus for first word matches with fewer total words
+                    if is_first_word_match and word_count <= 3:
+                        word_count_penalty *= 0.5  # Reduce penalty for short, specific matches
+                    
+                    final_score = base_score - word_count_penalty
+                    
+                    word_matches.append((item, final_score))
             
-            # Sort by score
+            # Sort by score (descending)
             word_matches.sort(key=lambda x: x[1], reverse=True)
             
             logger.info(f"USDA matches found: {len(word_matches)}")
