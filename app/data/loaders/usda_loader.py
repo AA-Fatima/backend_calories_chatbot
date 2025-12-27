@@ -42,13 +42,13 @@ class USDALoader:
             
             # Your file uses 'SRLegacyFoods' key
             if isinstance(data, dict):
-                foods = data.get('SRLegacyFoods', data. get('foods', []))
+                foods = data.get('SRLegacyFoods', data.get('foods', []))
             elif isinstance(data, list):
                 foods = data
             else: 
                 foods = []
             
-            logger. info(f"Loaded {len(foods)} foods from SR Legacy database")
+            logger.info(f"Loaded {len(foods)} foods from SR Legacy database")
             return {"foods": foods}
             
         except FileNotFoundError: 

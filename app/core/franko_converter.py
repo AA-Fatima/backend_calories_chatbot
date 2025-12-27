@@ -28,7 +28,7 @@ class FrankoConverter:
         """Initialize Google Translator"""
         try: 
             from deep_translator import GoogleTranslator
-            self. translator = GoogleTranslator(source='auto', target='en')
+            self.translator = GoogleTranslator(source='auto', target='en')
             logger.info("Google Translator initialized - can translate ANY language!")
         except ImportError:
             logger.error("deep-translator not installed!  Run: pip install deep-translator")
@@ -39,7 +39,7 @@ class FrankoConverter:
     
     def is_franco(self, text: str) -> bool:
         """Check if text contains Franco-Arabic (Arabic written in Latin + numbers)"""
-        has_latin = bool(re. search(r'[a-zA-Z]', text))
+        has_latin = bool(re.search(r'[a-zA-Z]', text))
         has_franco_numbers = bool(re.search(r'[2357]', text))
         return has_latin and has_franco_numbers
     
@@ -62,22 +62,22 @@ class FrankoConverter:
     
     def convert(self, text: str) -> str:
         """Convert ANY text to searchable English"""
-        original_text = text. strip()
+        original_text = text.strip()
         
         # Step 1: Convert Franco numbers to letters
         converted = original_text.lower()
-        for num, letter in self. number_map.items():
+        for num, letter in self.number_map.items():
             converted = converted.replace(num, letter)
         
         # Step 2: If text has Arabic OR was Franco, translate to English
         if self.is_arabic(original_text) or self.is_franco(original_text):
             translated = self.translate_to_english(converted)
             if translated:
-                converted = translated. lower()
+                converted = translated.lower()
         
         # Clean up
-        converted = ' '.join(converted. split())
-        return converted. strip()
+        converted = ' '.join(converted.split())
+        return converted.strip()
     
     def translate_to_english(self, text: str) -> Optional[str]:
         """Translate ANY text to English using Google Translate"""
@@ -87,9 +87,9 @@ class FrankoConverter:
         
         try:
             # Google Translate auto-detects language and translates
-            result = self.translator. translate(text)
+            result = self.translator.translate(text)
             logger.debug(f"Translated '{text}' -> '{result}'")
             return result
         except Exception as e:
-            logger. warning(f"Translation failed for '{text}': {e}")
+            logger.warning(f"Translation failed for '{text}': {e}")
             return text

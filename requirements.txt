@@ -12,6 +12,8 @@ numpy==1.26.3
 spacy==3.7.2
 sentence-transformers==2.2.2
 langdetect==1.0.9
+rapidfuzz==3.6.1
+deep-translator==1.11.4
 
 # Database
 motor==3.3.2

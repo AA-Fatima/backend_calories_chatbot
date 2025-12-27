@@ -7,7 +7,7 @@ import pandas as pd
 import os
 import logging
 
-logger = logging. getLogger(__name__)
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class EvaluationRequest(BaseModel):
@@ -29,8 +29,8 @@ class EvaluationSummary(BaseModel):
 async def run_evaluation(request: EvaluationRequest):
     """Run evaluation comparing our chatbot with GPT and DeepSeek"""
     
-    if not os.path. exists(request.test_file_path):
-        raise HTTPException(status_code=404, detail=f"Test file not found: {request. test_file_path}")
+    if not os.path.exists(request.test_file_path):
+        raise HTTPException(status_code=404, detail=f"Test file not found: {request.test_file_path}")
     
     # Load test cases
     try:
@@ -48,7 +48,7 @@ async def run_evaluation(request: EvaluationRequest):
     results = []
     
     for _, row in df.iterrows():
-        query = str(row. get('query', row.get('food_name', '')))
+        query = str(row.get('query', row.get('food_name', '')))
         expected_calories = float(row.get('expected_calories', row.get('calories', 0)))
         country = str(row.get('country', 'lebanon')).lower()
         
@@ -58,8 +58,8 @@ async def run_evaluation(request: EvaluationRequest):
         # Get our response
         our_calories = None
         try:
-            parsed = nlp_engine. parse_query(query)
-            result = await calorie_calculator. calculate(parsed, country, {})
+            parsed = nlp_engine.parse_query(query)
+            result = await calorie_calculator.calculate(parsed, country, {})
             our_calories = result.total_calories if result.total_calories > 0 else None
         except Exception as e:
             logger.error(f"Error calculating for {query}: {e}")
@@ -68,7 +68,7 @@ async def run_evaluation(request: EvaluationRequest):
         gpt_calories = None
         if request.include_gpt:
             try:
-                gpt_result = await fallback_service. get_calories_from_gpt(query, country)
+                gpt_result = await fallback_service.get_calories_from_gpt(query, country)
                 if gpt_result: 
                     gpt_calories = gpt_result.get("calories")
             except Exception as e:
@@ -89,7 +89,7 @@ async def run_evaluation(request: EvaluationRequest):
         gpt_error = abs(gpt_calories - expected_calories) / expected_calories * 100 if gpt_calories else None
         deepseek_error = abs(deepseek_calories - expected_calories) / expected_calories * 100 if deepseek_calories else None
         
-        results. append(EvaluationResult(
+        results.append(EvaluationResult(
             query=query,
             expected_calories=expected_calories,
             our_calories=our_calories,
@@ -102,7 +102,7 @@ async def run_evaluation(request: EvaluationRequest):
     
     # Calculate summary statistics
     our_errors = [r.our_error_percent for r in results if r.our_error_percent is not None]
-    gpt_errors = [r. gpt_error_percent for r in results if r.gpt_error_percent is not None]
+    gpt_errors = [r.gpt_error_percent for r in results if r.gpt_error_percent is not None]
     deepseek_errors = [r.deepseek_error_percent for r in results if r.deepseek_error_percent is not None]
     
     return EvaluationSummary(

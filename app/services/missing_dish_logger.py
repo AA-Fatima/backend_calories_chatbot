@@ -11,7 +11,7 @@ class MissingDishLogger:
     
     def __init__(self, log_file: str = "missing_dishes.json"):
         self.log_file = log_file
-        self. missing_dishes = self._load_logs()
+        self.missing_dishes = self._load_logs()
     
     def _load_logs(self) -> List[Dict]: 
         """Load existing logs"""
@@ -44,17 +44,17 @@ class MissingDishLogger:
         
         # Check if already logged
         for dish in self.missing_dishes: 
-            if dish["query"]. lower() == query.lower() and dish["country"] == country: 
+            if dish["query"].lower() == query.lower() and dish["country"] == country: 
                 logger.info(f"Dish already logged: {query}")
                 return
         
-        self. missing_dishes.append(entry)
+        self.missing_dishes.append(entry)
         self._save_logs()
         logger.info(f"Logged missing dish:  {query} ({country})")
     
     def get_unresolved(self) -> List[Dict]:
         """Get all unresolved missing dishes"""
-        return [d for d in self. missing_dishes if not d["resolved"]]
+        return [d for d in self.missing_dishes if not d["resolved"]]
     
     def mark_resolved(self, query: str, country:  str):
         """Mark a dish as resolved"""

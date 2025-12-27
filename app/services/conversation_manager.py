@@ -17,7 +17,7 @@ class ConversationManager:
             "last_dish": None,
             "last_result": None,
             "awaiting_ingredients": False,
-            "created_at": datetime. utcnow()
+            "created_at": datetime.utcnow()
         }
         return session_id
     
@@ -27,12 +27,12 @@ class ConversationManager:
     
     def update_session(self, session_id:  str, **kwargs):
         """Update session data"""
-        if session_id in self. sessions:
+        if session_id in self.sessions:
             self.sessions[session_id].update(kwargs)
     
     def add_message(self, session_id: str, role: str, content:  str, metadata: Dict = None):
         """Add message to history"""
-        if session_id in self. sessions:
+        if session_id in self.sessions:
             self.sessions[session_id]["history"].append({
                 "role": role,
                 "content": content,
@@ -45,8 +45,8 @@ class ConversationManager:
         session = self.sessions.get(session_id, {})
         return {
             "country": session.get("country"),
-            "last_dish": session. get("last_dish"),
-            "last_result": session. get("last_result"),
+            "last_dish": session.get("last_dish"),
+            "last_result": session.get("last_result"),
             "awaiting_ingredients": session.get("awaiting_ingredients", False),
             "history_length": len(session.get("history", []))
         }

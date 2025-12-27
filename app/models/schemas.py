@@ -29,7 +29,7 @@ class MessageRole(str, Enum):
 class ChatMessage(BaseModel):
     role: MessageRole
     content:  str
-    timestamp:  datetime = Field(default_factory=datetime. utcnow)
+    timestamp:  datetime = Field(default_factory=datetime.utcnow)
 
 class ChatRequest(BaseModel):
     message:  str

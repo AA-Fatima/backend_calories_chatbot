@@ -103,7 +103,7 @@ class NLPEngine:
         - If Arabic script: translate to English
         - If Latin text (English/Franco): just clean it, DON'T translate! 
         """
-        result = text. strip()
+        result = text.strip()
         
         # ONLY translate if text has Arabic script
         if has_arabic and self.translator:
@@ -117,27 +117,27 @@ class NLPEngine:
                 logger.warning(f"Translation failed: {e}")
         
         # Convert to lowercase
-        result = result. lower()
+        result = result.lower()
         
         # Handle Franco-Arabic numbers (for Franco text)
         if self._is_franco_arabic(text):
             franco_numbers = {'2':  'a', '3': 'a', '5': 'kh', '6': 't', '7': 'h', '8': 'q', '9': 's'}
-            for num, letter in franco_numbers. items():
+            for num, letter in franco_numbers.items():
                 result = result.replace(num, letter)
         
         # Clean up spaces
-        result = ' '.join(result. split())
+        result = ' '.join(result.split())
         
-        return result. strip()
+        return result.strip()
     
     def _classify_intent(self, text: str, context:  Optional[Dict] = None) -> Intent:
         """Classify intent"""
-        text_lower = text. lower()
+        text_lower = text.lower()
         
         # Greeting patterns
         greetings = ['hi', 'hello', 'hey', 'good morning', 'good evening', 'marhaba', 'ahlan', 'salam']
         if any(text_lower.strip() == g or text_lower.startswith(g + ' ') for g in greetings):
-            return Intent. GREETING
+            return Intent.GREETING
         
         # Help patterns
         if any(word in text_lower for word in ['help', 'how do', 'how to', 'what can']):
@@ -146,7 +146,7 @@ class NLPEngine:
         # Remove patterns
         remove_words = ['without', 'remove', 'no ', 'except', 'minus', 'exclude', 'hold the', 'bala', 'bidun', 'bidoun']
         if any(word in text_lower for word in remove_words):
-            return Intent. MODIFY_REMOVE
+            return Intent.MODIFY_REMOVE
         
         # Add patterns
         add_words = ['extra', 'add ', 'plus', 'include', 'with ']
@@ -157,7 +157,7 @@ class NLPEngine:
     
     def _extract_food_items(self, text: str) -> List[str]:
         """Extract food items from text"""
-        text_lower = text. lower().strip()
+        text_lower = text.lower().strip()
         
         # Handle modification patterns first
         modification_patterns = [
@@ -168,7 +168,7 @@ class NLPEngine:
         
         for pattern in modification_patterns: 
             if pattern in ' ' + text_lower + ' ':
-                food_part = text_lower. split(pattern. strip())[0].strip()
+                food_part = text_lower.split(pattern.strip())[0].strip()
                 food_part = self._clean_food_name(food_part)
                 if food_part:
                     return [food_part]
@@ -187,7 +187,7 @@ class NLPEngine:
             'the ', 'a ', 'an ',
         ]
         
-        result = text. lower()
+        result = text.lower()
         for phrase in remove_phrases: 
             result = result.replace(phrase, ' ')
         
@@ -208,7 +208,7 @@ class NLPEngine:
         
         for pattern in remove_patterns:
             if pattern in text_lower:
-                parts = text_lower. split(pattern)
+                parts = text_lower.split(pattern)
                 if len(parts) > 1:
                     after = parts[1].strip()
                     item = self._extract_first_item(after)
@@ -220,7 +220,7 @@ class NLPEngine:
         
         for pattern in add_patterns:
             if pattern in text_lower:
-                parts = text_lower. split(pattern)
+                parts = text_lower.split(pattern)
                 if len(parts) > 1:
                     after = parts[1].strip()
                     item = self._extract_first_item(after)
@@ -236,9 +236,9 @@ class NLPEngine:
         # Handle "30g of X" pattern
         if ' of ' in text: 
             after_of = text.split(' of ', 1)[1]
-            words = after_of. split()
+            words = after_of.split()
             if words:
-                return words[0]. strip('.,! ?')
+                return words[0].strip('.,! ?')
         
         # Get first non-quantity word
         words = text.split()
@@ -246,9 +246,9 @@ class NLPEngine:
         
         for word in words:
             clean = word.strip('.,!?')
-            if clean. isdigit():
+            if clean.isdigit():
                 continue
-            if any(c. isdigit() for c in clean):
+            if any(c.isdigit() for c in clean):
                 continue
             if clean in skip:
                 continue
@@ -264,8 +264,8 @@ class NLPEngine:
         # Find weight patterns:  200g, 200 g, 200 grams
         weight_match = re.search(r'(\d+)\s*(g|gram|grams|kg)\b', text_lower)
         if weight_match:
-            value = float(weight_match. group(1))
-            unit = weight_match. group(2)
+            value = float(weight_match.group(1))
+            unit = weight_match.group(2)
             if 'kg' in unit: 
                 value *= 1000
             quantities["_weight"] = value
@@ -287,9 +287,9 @@ class NLPEngine:
         
         try: 
             from sentence_transformers import util
-            emb1 = self.semantic_model. encode(text1, convert_to_tensor=True)
+            emb1 = self.semantic_model.encode(text1, convert_to_tensor=True)
             emb2 = self.semantic_model.encode(text2, convert_to_tensor=True)
-            similarity = util. cos_sim(emb1, emb2).item()
+            similarity = util.cos_sim(emb1, emb2).item()
             return similarity
         except Exception as e:
             logger.debug(f"Semantic similarity failed: {e}")
@@ -311,7 +311,7 @@ class NLPEngine:
         if self.semantic_model:
             try:
                 from sentence_transformers import util
-                query_emb = self.semantic_model. encode(query, convert_to_tensor=True)
+                query_emb = self.semantic_model.encode(query, convert_to_tensor=True)
                 candidate_embs = self.semantic_model.encode(candidates, convert_to_tensor=True)
                 similarities = util.cos_sim(query_emb, candidate_embs)[0]
                 

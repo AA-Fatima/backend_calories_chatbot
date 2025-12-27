@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # External APIs
     OPENAI_API_KEY: Optional[str] = None
     DEEPSEEK_API_KEY: Optional[str] = None
-    DEEPSEEK_BASE_URL: str = "https://api.deepseek. com/v1"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
     
     # NLP Settings
     SIMILARITY_THRESHOLD: float = 0.7

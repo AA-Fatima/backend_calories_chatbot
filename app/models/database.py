@@ -4,7 +4,7 @@ from app.config import settings
 from typing import Optional
 import logging
 
-logger = logging. getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 class Database:
     client: Optional[AsyncIOMotorClient] = None
@@ -14,12 +14,12 @@ class Database:
     async def connect(cls):
         """Connect to MongoDB"""
         try:
-            cls. client = AsyncIOMotorClient(settings.MONGODB_URL)
-            cls.db = cls. client[settings.DATABASE_NAME]
+            cls.client = AsyncIOMotorClient(settings.MONGODB_URL)
+            cls.db = cls.client[settings.DATABASE_NAME]
             
             # Create indexes
             await cls.db.conversations.create_index("session_id")
-            await cls. db.missing_dishes.create_index("timestamp")
+            await cls.db.missing_dishes.create_index("timestamp")
             await cls.db.missing_dishes.create_index("resolved")
             
             logger.info("Connected to MongoDB")
@@ -37,9 +37,9 @@ class Database:
     @classmethod
     async def save_conversation(cls, session_id: str, messages: list):
         """Save conversation history"""
-        await cls.db.conversations. update_one(
+        await cls.db.conversations.update_one(
             {"session_id":  session_id},
-            {"$set": {"messages": messages, "updated_at": datetime. utcnow()}},
+            {"$set": {"messages": messages, "updated_at": datetime.utcnow()}},
             upsert=True
         )
     
@@ -57,7 +57,7 @@ class Database:
     @classmethod
     async def get_missing_dishes(cls, resolved: bool = False) -> list:
         """Get all missing dishes"""
-        cursor = cls.db. missing_dishes.find({"resolved": resolved})
+        cursor = cls.db.missing_dishes.find({"resolved": resolved})
         return await cursor.to_list(length=1000)
 
 from datetime import datetime

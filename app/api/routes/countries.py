@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from typing import List
-from app. models.schemas import CountryInfo
+from app.models.schemas import CountryInfo
 
 router = APIRouter()
 
@@ -26,6 +26,6 @@ async def get_countries():
 async def get_country(country_code: str):
     """Get country by code"""
     for country in COUNTRIES_DATA:
-        if country.code == country_code. lower():
+        if country.code == country_code.lower():
             return country
     return {"error": "Country not found"}

@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Tuple
 from rapidfuzz import fuzz, process
 import logging
 
-logger = logging. getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class FoodSearchService:
@@ -21,13 +21,13 @@ class FoodSearchService:
         self.dishes = self._get_dishes_list(dishes)
         self.nlp_engine = nlp_engine
         
-        logger.info(f"Loaded - Foundation: {len(self.usda_foundation)}, SR Legacy: {len(self. usda_sr_legacy)}, Dishes: {len(self.dishes)}")
+        logger.info(f"Loaded - Foundation: {len(self.usda_foundation)}, SR Legacy: {len(self.usda_sr_legacy)}, Dishes: {len(self.dishes)}")
         
         # Build search index
-        self. search_index = self._build_search_index()
+        self.search_index = self._build_search_index()
         
         # Separate indices
-        self.dish_index = [item for item in self. search_index if item["source"] == "dishes"]
+        self.dish_index = [item for item in self.search_index if item["source"] == "dishes"]
         self.usda_index = [item for item in self.search_index if item["source"] != "dishes"]
         
         # Name lists for fuzzy search
@@ -35,7 +35,7 @@ class FoodSearchService:
         self.usda_names = [item["name"] for item in self.usda_index]
         self.all_names = [item["name"] for item in self.search_index]
         
-        logger.info(f"Search index:  {len(self. search_index)} total ({len(self.dish_index)} dishes, {len(self. usda_index)} USDA)")
+        logger.info(f"Search index:  {len(self.search_index)} total ({len(self.dish_index)} dishes, {len(self.usda_index)} USDA)")
     
     def _get_foods_list(self, data: Any) -> List[Dict]: 
         if isinstance(data, list):
@@ -59,10 +59,10 @@ class FoodSearchService:
         index = []
         
         for dish in self.dishes:
-            name = dish. get("dish_name", "")
+            name = dish.get("dish_name", "")
             if name:
                 index.append({
-                    "name": name. lower(),
+                    "name": name.lower(),
                     "original_name": name,
                     "data": dish,
                     "source": "dishes",
@@ -81,11 +81,11 @@ class FoodSearchService:
                 })
         
         for food in self.usda_sr_legacy: 
-            name = food. get("description", "")
+            name = food.get("description", "")
             if name:
-                index. append({
-                    "name": name. lower(),
-                    "original_name":  name,
+                index.append({
+                    "name": name.lower(),
+                    "original_name": name,
                     "data": food,
                     "source": "usda_sr_legacy",
                     "country":  ""
@@ -96,7 +96,7 @@ class FoodSearchService:
     def search(self, query:  str, country: str = "", top_k: int = 5) -> List[Tuple[Dict, str, float]]:
         """Search for food"""
         query_lower = query.lower().strip()
-        country_lower = country. lower().strip() if country else ""
+        country_lower = country.lower().strip() if country else ""
         
         if not query_lower: 
             return []
@@ -118,10 +118,10 @@ class FoodSearchService:
         
         # Step 2: Search dishes in selected country FIRST
         if self.dish_names:
-            country_dishes = [(item["name"], item) for item in self. dish_index if item["country"] == country_lower]
+            country_dishes = [(item["name"], item) for item in self.dish_index if item["country"] == country_lower]
             if country_dishes: 
                 country_dish_names = [d[0] for d in country_dishes]
-                matches = process. extract(query_lower, country_dish_names, scorer=fuzz.WRatio, limit=3)
+                matches = process.extract(query_lower, country_dish_names, scorer=fuzz.WRatio, limit=3)
                 
                 for name, score, _ in matches:
                     if score >= 70: 
@@ -132,7 +132,7 @@ class FoodSearchService:
         
         # Step 3: If no good matches in selected country, search all dishes
         if not results or (results and results[0][2] < 0.8):
-            matches = process.extract(query_lower, self.dish_names, scorer=fuzz. WRatio, limit=3)
+            matches = process.extract(query_lower, self.dish_names, scorer=fuzz.WRatio, limit=3)
             
             for name, score, _ in matches: 
                 if score >= 70:
@@ -169,7 +169,7 @@ class FoodSearchService:
                     if score >= 60:
                         for item in self.usda_index: 
                             if item["name"] == name: 
-                                results. append((item["data"], item["source"], score / 100.0))
+                                results.append((item["data"], item["source"], score / 100.0))
                                 break
         
         # Sort by score
@@ -179,14 +179,14 @@ class FoodSearchService:
         seen = set()
         unique = []
         for data, source, conf in results:
-            name = data. get("dish_name") or data.get("description", "")
-            if name. lower() not in seen:
-                seen. add(name.lower())
-                unique. append((data, source, conf))
+            name = data.get("dish_name") or data.get("description", "")
+            if name.lower() not in seen:
+                seen.add(name.lower())
+                unique.append((data, source, conf))
         
         logger.info(f"Found {len(unique)} results")
         if unique:
-            logger.info(f"Top result: {unique[0][0]. get('dish_name') or unique[0][0].get('description')}")
+            logger.info(f"Top result: {unique[0][0].get('dish_name') or unique[0][0].get('description')}")
         
         return unique[: top_k]
     
@@ -212,7 +212,7 @@ class FoodSearchService:
                 if score >= 50:
                     for item in self.usda_index: 
                         if item["name"] == name: 
-                            results. append((item["data"], item["source"], score / 100.0))
+                            results.append((item["data"], item["source"], score / 100.0))
                             break
         
         return results[: top_k]

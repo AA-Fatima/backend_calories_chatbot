@@ -18,7 +18,7 @@ app_state:  Dict = {}
 
 
 def get_nlp_engine() -> NLPEngine:
-    return app_state. get("nlp_engine")
+    return app_state.get("nlp_engine")
 
 
 def get_food_search() -> FoodSearchService:
@@ -50,23 +50,23 @@ async def send_message(request: ChatRequest):
         session = conversation_manager.get_session(request.session_id)
         if not session:
             request.session_id = conversation_manager.create_session(request.country)
-            session = conversation_manager.get_session(request. session_id)
+            session = conversation_manager.get_session(request.session_id)
         
         # Get conversation context
-        context = conversation_manager. get_context(request.session_id)
+        context = conversation_manager.get_context(request.session_id)
         
         # Parse the user's message
         logger.info(f"Parsing query: {request.message}")
         parsed_query = nlp_engine.parse_query(request.message, context)
-        logger.info(f"Parsed query: intent={parsed_query. intent}, foods={parsed_query. food_items}")
+        logger.info(f"Parsed query: intent={parsed_query.intent}, foods={parsed_query.food_items}")
         
         # Handle different intents
-        if parsed_query. intent == Intent. GREETING:
+        if parsed_query.intent == Intent.GREETING:
             response_message = generate_greeting_response(request.country)
             return ChatResponse(
                 message=response_message,
                 calorie_result=None,
-                session_id=request. session_id
+                session_id=request.session_id
             )
         
         if parsed_query.intent == Intent.HELP:
@@ -79,13 +79,13 @@ async def send_message(request: ChatRequest):
         
         # Calculate calories
         logger.info(f"Calculating calories for: {parsed_query.food_items}")
-        calorie_result = await calorie_calculator. calculate(parsed_query, request.country, context)
-        logger.info(f"Result: {calorie_result. food_name} = {calorie_result.total_calories} kcal")
+        calorie_result = await calorie_calculator.calculate(parsed_query, request.country, context)
+        logger.info(f"Result: {calorie_result.food_name} = {calorie_result.total_calories} kcal")
         
         # Generate response message
         if calorie_result.source == "not_found" or calorie_result.total_calories == 0:
             response_message = generate_not_found_response(
-                parsed_query.food_items[0] if parsed_query. food_items else request.message
+                parsed_query.food_items[0] if parsed_query.food_items else request.message
             )
             return ChatResponse(
                 message=response_message,
@@ -132,7 +132,7 @@ async def get_session(session_id: str):
     conversation_manager = get_conversation_manager()
     if not conversation_manager:
         raise HTTPException(status_code=500, detail="Conversation manager not initialized")
-    session = conversation_manager. get_session(session_id)
+    session = conversation_manager.get_session(session_id)
     if not session: 
         raise HTTPException(status_code=404, detail="Session not found")
     return session
@@ -147,7 +147,7 @@ def generate_greeting_response(country: str) -> str:
         "saudi":  "Marhaba! 🇸🇦",
         "iraq": "Ahlan bik! 🇮🇶",
     }
-    greeting = country_greetings.get(country. lower(), "Hello!")
+    greeting = country_greetings.get(country.lower(), "Hello!")
     
     return f"""{greeting} Welcome to the Arabic Food Calorie Calculator!
 
@@ -190,7 +190,7 @@ Just type your question and I'll help you!"""
 def generate_calorie_response(result: CalorieResult) -> str:
     """Generate response for calorie result"""
     
-    food_name = result. food_name. title() if result.food_name else "Unknown"
+    food_name = result.food_name.title() if result.food_name else "Unknown"
     total_cal = int(result.total_calories) if result.total_calories else 0
     total_weight = int(result.weight_g) if result.weight_g else 0
     
@@ -209,7 +209,7 @@ Nutrition Information:
     if result.ingredients and len(result.ingredients) > 0:
         response += "\nIngredients breakdown:\n"
         for ing in result.ingredients[: 10]: 
-            ing_cal = int(ing. calories) if ing.calories else 0
+            ing_cal = int(ing.calories) if ing.calories else 0
             ing_weight = int(ing.weight_g) if ing.weight_g else 0
             response += f"  - {ing.name}: {ing_cal} kcal ({ing_weight}g)\n"
     

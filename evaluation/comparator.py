@@ -7,15 +7,15 @@ import os
 import sys
 
 # Add parent directory to path
-sys.path.insert(0, os. path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.nlp_engine import NLPEngine
 from app.services.fallback_service import FallbackService
 from app.services.food_search import FoodSearchService
-from app.services. calorie_calculator import CalorieCalculatorService
+from app.services.calorie_calculator import CalorieCalculatorService
 from app.services.missing_dish_logger import MissingDishLogger
 from app.data.loaders import USDALoader, DishesLoader
-from app. config import settings
+from app.config import settings
 
 
 class ChatbotComparator:
@@ -33,8 +33,8 @@ class ChatbotComparator:
         print("🔄 Initializing services...")
         
         # Load data
-        usda_foundation = USDALoader. load_foundation(settings.USDA_FOUNDATION_PATH)
-        usda_sr_legacy = USDALoader. load_sr_legacy(settings.USDA_SR_LEGACY_PATH)
+        usda_foundation = USDALoader.load_foundation(settings.USDA_FOUNDATION_PATH)
+        usda_sr_legacy = USDALoader.load_sr_legacy(settings.USDA_SR_LEGACY_PATH)
         dishes = DishesLoader.load(settings.DISHES_PATH)
         
         # Initialize NLP
@@ -58,7 +58,7 @@ class ChatbotComparator:
         try: 
             parsed = self.nlp_engine.parse_query(query)
             result = await self.calorie_calculator.calculate(parsed, country, {})
-            return result. total_calories if result. total_calories > 0 else None
+            return result.total_calories if result.total_calories > 0 else None
         except Exception as e:
             print(f"  ⚠️ Our chatbot error: {e}")
             return None
@@ -67,7 +67,7 @@ class ChatbotComparator:
         """Get calorie response from GPT"""
         try: 
             result = await self.fallback_service.get_calories_from_gpt(query, country)
-            return result. get("calories") if result else None
+            return result.get("calories") if result else None
         except Exception as e:
             print(f"  ⚠️ GPT error:  {e}")
             return None
@@ -75,7 +75,7 @@ class ChatbotComparator:
     async def get_deepseek_response(self, query:  str, country: str) -> Optional[float]:
         """Get calorie response from DeepSeek"""
         try:
-            result = await self. fallback_service. get_calories_from_deepseek(query, country)
+            result = await self.fallback_service.get_calories_from_deepseek(query, country)
             return result.get("calories") if result else None
         except Exception as e: 
             print(f"  ⚠️ DeepSeek error: {e}")
@@ -103,11 +103,11 @@ class ChatbotComparator:
         results = []
         total = len(df)
         
-        print(f"🧪 Running {total} test cases.. .\n")
+        print(f"🧪 Running {total} test cases...\n")
         
-        for idx, row in df. iterrows():
-            query = str(row. get('query', row.get('food_name', '')))
-            expected = float(row. get('expected_calories', row.get('calories', 0)))
+        for idx, row in df.iterrows():
+            query = str(row.get('query', row.get('food_name', '')))
+            expected = float(row.get('expected_calories', row.get('calories', 0)))
             country = str(row.get('country', 'lebanon')).lower()
             
             if not query or expected == 0:

@@ -2,7 +2,7 @@ import re
 import logging
 from typing import Optional
 
-logger = logging. getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ArabicProcessor:
@@ -36,7 +36,7 @@ class ArabicProcessor:
         # Normalize alef variations
         text = re.sub(r'[إأآا]', 'ا', text)
         # Normalize taa marbuta
-        text = text. replace('ة', 'ه')
+        text = text.replace('ة', 'ه')
         # Normalize yaa
         text = text.replace('ى', 'ي')
         return text
