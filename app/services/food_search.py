@@ -141,13 +141,13 @@ class FoodSearchService:
                 base_score = 0.0
                 is_first_word_match = False
                 
-                # BEST: Query matches the FIRST word exactly
+                # BEST: Query matches the FIRST word exactly OR as plural
                 if item_words and item_words[0] == query_lower:
                     base_score = 0.95
                     is_first_word_match = True
-                # Handle plural forms: "apple" matches "apples" (first word)
+                # Handle plural forms: "apple" matches "apples" (first word) - same score as exact
                 elif item_words and (item_words[0] == query_lower + 's' or item_words[0] == query_lower + 'es'):
-                    base_score = 0.94
+                    base_score = 0.95  # Same as exact match
                     is_first_word_match = True
                 # GOOD: Query is a complete word in the name
                 elif query_lower in item_words:
