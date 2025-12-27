@@ -1,0 +1,42 @@
+[
+  {
+    "query": "kushari",
+    "country": "lebanon",
+    "timestamp": "2025-12-27T00:26:45.261452",
+    "fallback_response": null,
+    "user_provided_ingredients": null,
+    "resolved": false
+  },
+  {
+    "query": "koshari",
+    "country": "lebanon",
+    "timestamp": "2025-12-27T00:26:57.015825",
+    "fallback_response": null,
+    "user_provided_ingredients": null,
+    "resolved": false
+  },
+  {
+    "query": "ade fi bl fahita",
+    "country": "lebanon",
+    "timestamp": "2025-12-27T00:27:19.317937",
+    "fallback_response": null,
+    "user_provided_ingredients": null,
+    "resolved": false
+  },
+  {
+    "query": "apple",
+    "country": "lebanon",
+    "timestamp": "2025-12-27T00:29:18.494784",
+    "fallback_response": null,
+    "user_provided_ingredients": null,
+    "resolved": false
+  },
+  {
+    "query": "fajit without fries",
+    "country": "lebanon",
+    "timestamp": "2025-12-27T00:33:56.759658",
+    "fallback_response": null,
+    "user_provided_ingredients": null,
+    "resolved": false
+  }
+]
