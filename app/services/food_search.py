@@ -94,7 +94,7 @@ class FoodSearchService:
         return index
     
     def search(self, query:  str, country: str = "", top_k: int = 5) -> List[Tuple[Dict, str, float]]:
-        """Search for food"""
+        """Search for food - prioritize USDA for single-word ingredient queries"""
         query_lower = query.lower().strip()
         country_lower = country.lower().strip() if country else ""
         
@@ -103,20 +103,111 @@ class FoodSearchService:
         
         logger.info(f"Searching for:  '{query_lower}' (country: {country_lower})")
         
-        # Step 1: Exact match
+        # Detect if this is a single-word ingredient query
+        is_single_word = len(query_lower.split()) == 1
+        logger.info(f"Is single word: {is_single_word}")
+        
+        # Step 1: Exact match check
+        exact_match = None
         for item in self.search_index:
             if query_lower == item["name"]:
                 if item["source"] == "dishes":
                     if not country_lower or item["country"] == country_lower:
-                        logger.info(f"Exact match:  {item['original_name']}")
-                        return [(item["data"], item["source"], 1.0)]
+                        exact_match = [(item["data"], item["source"], 1.0)]
+                        break
                 else:
+                    # Exact USDA match
                     logger.info(f"Exact USDA match: {item['original_name']}")
                     return [(item["data"], item["source"], 1.0)]
         
+        # If exact dish match found and NOT a single word, return it
+        if exact_match and not is_single_word:
+            logger.info(f"Exact dish match: {exact_match[0][0].get('dish_name')}")
+            return exact_match
+        
         results = []
         
-        # Step 2: Search dishes in selected country FIRST
+        # Step 2: For single-word queries, search USDA FIRST
+        if is_single_word:
+            logger.info(f"Single-word query detected, searching USDA first")
+            
+            # Search USDA ingredients with word-level matching
+            word_matches = []
+            for item in self.usda_index:
+                item_words = item["name"].replace(',', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').lower().split()
+                item_words = [w for w in item_words if w]  # Remove empty strings
+                
+                # Calculate base score
+                base_score = 0.0
+                is_first_word_match = False
+                
+                # BEST: Query matches the FIRST word exactly
+                if item_words and item_words[0] == query_lower:
+                    base_score = 0.95
+                    is_first_word_match = True
+                # Handle plural forms: "apple" matches "apples" (first word)
+                elif item_words and (item_words[0] == query_lower + 's' or item_words[0] == query_lower + 'es'):
+                    base_score = 0.94
+                    is_first_word_match = True
+                # GOOD: Query is a complete word in the name
+                elif query_lower in item_words:
+                    base_score = 0.85
+                # OK: Query is at start of first word (e.g., "chick" matches "chicken")
+                elif item_words and item_words[0].startswith(query_lower) and len(query_lower) >= 4:
+                    base_score = 0.75
+                
+                # Apply score adjustments
+                if base_score > 0:
+                    # Prefer shorter names (more specific)
+                    # E.g., "Apples, raw" (2 words) > "Apple juice, unsweetened" (3 words)
+                    word_count = len(item_words)
+                    word_count_penalty = min(word_count * 0.01, 0.05)  # Max 5% penalty
+                    
+                    # Bonus for first word matches with fewer total words
+                    if is_first_word_match and word_count <= 3:
+                        word_count_penalty *= 0.5  # Reduce penalty for short, specific matches
+                    
+                    final_score = base_score - word_count_penalty
+                    
+                    word_matches.append((item, final_score))
+            
+            # Sort by score (descending)
+            word_matches.sort(key=lambda x: x[1], reverse=True)
+            
+            logger.info(f"USDA matches found: {len(word_matches)}")
+            if word_matches:
+                logger.info(f"Top USDA match: {word_matches[0][0]['original_name']} (score: {word_matches[0][1]})")
+            
+            # Add top USDA matches
+            for item, score in word_matches[:10]:  # Get more candidates
+                results.append((item["data"], item["source"], score))
+            
+            # If we found good USDA matches, return them immediately
+            if results and results[0][2] >= 0.75:
+                logger.info(f"Found USDA ingredient: {results[0][0].get('description')} (score: {results[0][2]})")
+                # Sort by score and return top results
+                results.sort(key=lambda x: x[2], reverse=True)
+                return results[:top_k]
+            
+            # If no good word matches, try fuzzy matching on USDA
+            if not word_matches:
+                usda_fuzzy = process.extract(query_lower, self.usda_names, scorer=fuzz.WRatio, limit=5)
+                for name, score, _ in usda_fuzzy:
+                    if score >= 60:
+                        for item in self.usda_index:
+                            if item["name"] == name:
+                                results.append((item["data"], item["source"], score / 100.0))
+                                break
+                
+                if results:
+                    results.sort(key=lambda x: x[2], reverse=True)
+                    logger.info(f"Found USDA via fuzzy match: {results[0][0].get('description')}")
+                    return results[:top_k]
+        
+        # Step 3: Search dishes (for multi-word queries or if USDA search failed)
+        results = []
+        
+        # Search dishes in selected country FIRST
         if self.dish_names:
             country_dishes = [(item["name"], item) for item in self.dish_index if item["country"] == country_lower]
             if country_dishes: 
@@ -130,7 +221,7 @@ class FoodSearchService:
                                 results.append((item["data"], item["source"], score / 100.0))
                                 break
         
-        # Step 3: If no good matches in selected country, search all dishes
+        # Step 4: If no good matches in selected country, search all dishes
         if not results or (results and results[0][2] < 0.8):
             matches = process.extract(query_lower, self.dish_names, scorer=fuzz.WRatio, limit=3)
             
@@ -144,7 +235,7 @@ class FoodSearchService:
                             results.append((item["data"], item["source"], final_score))
                             break
         
-        # Step 4: Search USDA - IMPROVED MATCHING
+        # Step 5: Search USDA (for multi-word queries that didn't find dishes) - IMPROVED MATCHING
         if self.usda_names:
             # Normalize the query for better matching
             normalized_query = self._normalize_ingredient_name(query_lower)
