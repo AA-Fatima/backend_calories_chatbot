@@ -146,25 +146,42 @@ class FoodSearchService:
         
         # Step 4: Search USDA - IMPROVED MATCHING
         if self.usda_names:
-            # First:  Find items where query is a WORD in the name (not just substring)
+            # Normalize the query for better matching
+            normalized_query = self._normalize_ingredient_name(query_lower)
+            
+            # First: Find items where query is a WORD in the name (not just substring)
             word_matches = []
-            for item in self.usda_index: 
-                item_words = item["name"].replace(',', ' ').replace('-', ' ').lower().split()
-                # Check if query matches the FIRST word (most relevant)
-                if item_words and item_words[0] == query_lower: 
-                    word_matches.append((item, 0.95))
-                # Check if query is any word in the name
-                elif query_lower in item_words:
-                    word_matches.append((item, 0.85))
+            for item in self.usda_index:
+                normalized_item_name = self._normalize_ingredient_name(item["name"])
+                item_words = normalized_item_name.split()
+                query_words = normalized_query.split()
+                
+                # Check for exact word matches
+                if normalized_query == normalized_item_name:
+                    # Perfect match
+                    word_matches.append((item, 1.0))
+                elif len(query_words) == 1:
+                    # Single word query - check if it's the first or any significant word
+                    query_word = query_words[0]
+                    if item_words and item_words[0] == query_word:
+                        # Query matches first word (most relevant)
+                        word_matches.append((item, 0.95))
+                    elif query_word in item_words:
+                        # Query is any word in the name
+                        word_matches.append((item, 0.85))
+                else:
+                    # Multi-word query - check if all words are in the item
+                    if all(qw in item_words for qw in query_words):
+                        word_matches.append((item, 0.90))
             
             # Sort by score and add to results
             word_matches.sort(key=lambda x: x[1], reverse=True)
-            for item, score in word_matches[: 5]: 
+            for item, score in word_matches[:5]: 
                 results.append((item["data"], item["source"], score))
             
             # If no word matches, try fuzzy matching
             if not word_matches:
-                usda_matches = process.extract(query_lower, self.usda_names, scorer=fuzz.WRatio, limit=3)
+                usda_matches = process.extract(query_lower, self.usda_names, scorer=fuzz.WRatio, limit=5)
                 for name, score, _ in usda_matches:
                     if score >= 60:
                         for item in self.usda_index: 
@@ -186,7 +203,7 @@ class FoodSearchService:
         
         logger.info(f"Found {len(unique)} results")
         if unique:
-            logger.info(f"Top result: {unique[0][0].get('dish_name') or unique[0][0].get('description')}")
+            logger.info(f"Top result: {unique[0][0].get('dish_name') or unique[0][0].get('description')} (score: {unique[0][2]:.2f})")
         
         return unique[: top_k]
     
@@ -216,3 +233,21 @@ class FoodSearchService:
                             break
         
         return results[: top_k]
+    
+    def _normalize_ingredient_name(self, name: str) -> str:
+        """Normalize ingredient name for better matching"""
+        # Convert to lowercase
+        name = name.lower().strip()
+        
+        # Replace punctuation with spaces
+        name = name.replace(',', ' ').replace('-', ' ').replace('/', ' ')
+        
+        # Remove extra words that don't affect meaning
+        remove_words = ['raw', 'fresh', 'cooked', 'dried', 'frozen', 'canned', 'organic']
+        words = name.split()
+        words = [w for w in words if w not in remove_words]
+        
+        # Join and clean up spaces
+        name = ' '.join(words).strip()
+        
+        return name

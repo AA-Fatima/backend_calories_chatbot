@@ -73,6 +73,7 @@ class ParsedQuery(BaseModel):
     language_detected: str
     original_text: str
     normalized_text: str
+    confidence: float = 0.5  # Confidence score for the parse
 
 class CountryInfo(BaseModel):
     code: str

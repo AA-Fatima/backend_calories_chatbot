@@ -6,6 +6,7 @@ from app.services.calorie_calculator import CalorieCalculatorService
 from app.services.conversation_manager import ConversationManager
 from app.services.fallback_service import FallbackService
 from app.services.missing_dish_logger import MissingDishLogger
+from app.services.response_generator import ResponseGenerator
 from typing import Dict
 import logging
 import traceback
@@ -15,6 +16,7 @@ router = APIRouter()
 
 # These will be initialized in main.py
 app_state:  Dict = {}
+response_generator = ResponseGenerator()
 
 
 def get_nlp_engine() -> NLPEngine:
@@ -58,11 +60,14 @@ async def send_message(request: ChatRequest):
         # Parse the user's message
         logger.info(f"Parsing query: {request.message}")
         parsed_query = nlp_engine.parse_query(request.message, context)
-        logger.info(f"Parsed query: intent={parsed_query.intent}, foods={parsed_query.food_items}")
+        logger.info(f"Parsed query: intent={parsed_query.intent}, foods={parsed_query.food_items}, confidence={parsed_query.confidence}")
+        
+        # Get language for response
+        response_language = "arabic" if parsed_query.language_detected == "arabic" else "english"
         
         # Handle different intents
         if parsed_query.intent == Intent.GREETING:
-            response_message = generate_greeting_response(request.country)
+            response_message = response_generator.generate_greeting(request.country, response_language)
             return ChatResponse(
                 message=response_message,
                 calorie_result=None,
@@ -70,7 +75,7 @@ async def send_message(request: ChatRequest):
             )
         
         if parsed_query.intent == Intent.HELP:
-            response_message = generate_help_response()
+            response_message = response_generator.generate_help(response_language)
             return ChatResponse(
                 message=response_message,
                 calorie_result=None,
@@ -84,9 +89,18 @@ async def send_message(request: ChatRequest):
         
         # Generate response message
         if calorie_result.source == "not_found" or calorie_result.total_calories == 0:
-            response_message = generate_not_found_response(
-                parsed_query.food_items[0] if parsed_query.food_items else request.message
+            response_message = response_generator.generate_not_found(
+                parsed_query.food_items[0] if parsed_query.food_items else request.message,
+                response_language
             )
+            # Check if confidence is low, suggest clarification
+            if parsed_query.confidence < 0.6:
+                response_message = response_generator.generate_clarification(
+                    parsed_query.food_items[0] if parsed_query.food_items else request.message,
+                    [],
+                    response_language
+                ) + "\n\n" + response_message
+            
             return ChatResponse(
                 message=response_message,
                 calorie_result=None,
@@ -94,7 +108,7 @@ async def send_message(request: ChatRequest):
                 session_id=request.session_id
             )
         
-        response_message = generate_calorie_response(calorie_result)
+        response_message = response_generator.generate_calorie_response(calorie_result, response_language)
         
         # Update session context
         conversation_manager.update_session(

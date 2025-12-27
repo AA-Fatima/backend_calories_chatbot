@@ -13,10 +13,13 @@ class NLPEngine:
     def __init__(self):
         self.translator = None
         self.semantic_model = None
+        self.spell_checker = None
         self.initialized = False
+        self.food_vocabulary = self._build_food_vocabulary()
         
         self._init_translator()
         self._init_semantic_model()
+        self._init_spell_checker()
     
     def _init_translator(self):
         """Initialize Google Translator for Arabic ONLY"""
@@ -39,6 +42,92 @@ class NLPEngine:
             logger.warning(f"Semantic model not available: {e}")
             self.semantic_model = None
     
+    def _init_spell_checker(self):
+        """Initialize spell checker for typo correction"""
+        try:
+            # Spell checker is using rapidfuzz which is already in requirements
+            self.spell_checker = True
+            logger.info("✅ Spell checker initialized")
+        except Exception as e:
+            logger.warning(f"Spell checker not available: {e}")
+            self.spell_checker = None
+    
+    def _build_food_vocabulary(self) -> Dict[str, List[str]]:
+        """Build vocabulary of common food names and their misspellings"""
+        return {
+            # Common dishes and variations
+            "shawarma": ["shawerma", "shawrma", "sha2arma", "shawerma", "shwarma", "shawarmaa"],
+            "falafel": ["falafil", "felafel", "flafel", "falefel"],
+            "kabsa": ["kabseh", "kabsah", "kapsa", "kabseh"],
+            "kushari": ["koshary", "koshari", "kushari", "kosheri"],
+            "fajita": ["fahita", "fajitas", "fajetas"],
+            "biryani": ["biriani", "biryanii", "briyani"],
+            "hummus": ["humus", "hommus", "houmous"],
+            "tabouleh": ["tabbouleh", "tabouli", "tabbouli"],
+            "kibbeh": ["kibbe", "kebbeh", "kebeh"],
+            
+            # Common ingredients  
+            "chicken": ["chiken", "chickin", "chikn", "chcken"],
+            "rice": ["rize", "riice"],
+            "tomato": ["tomatoe", "tomatos"],
+            "potato": ["potatoe", "potatos", "pototo"],
+            "onion": ["onian", "onoin"],
+            "garlic": ["garlik", "garlick"],
+            "bread": ["bred", "berad"],
+            "cheese": ["chees", "cheez", "chese"],
+            "yogurt": ["yoghurt", "yogourt", "yoghourt"],
+            "cucumber": ["cucmber", "cucumbr"],
+            "lettuce": ["letuce", "lettuse"],
+            "apple": ["aple", "appel"],
+            "banana": ["bananna", "bannana"],
+            "orange": ["orang", "orenge"],
+        }
+    
+    def _correct_spelling(self, text: str) -> str:
+        """Correct common food name typos using fuzzy matching"""
+        if not self.spell_checker:
+            return text
+        
+        text_lower = text.lower().strip()
+        words = text_lower.split()
+        
+        # Check each word for correction
+        corrected_words = []
+        for word in words:
+            corrected = word
+            best_score = 0
+            
+            # Check against vocabulary
+            for correct_word, variations in self.food_vocabulary.items():
+                # Check if word matches any variation
+                if word == correct_word:
+                    corrected = correct_word
+                    break
+                elif word in variations:
+                    corrected = correct_word
+                    break
+                else:
+                    # Use fuzzy matching for typos
+                    from rapidfuzz import fuzz
+                    score = fuzz.ratio(word, correct_word)
+                    if score > 80 and score > best_score:
+                        best_score = score
+                        corrected = correct_word
+                    
+                    # Also check against variations
+                    for variation in variations:
+                        score = fuzz.ratio(word, variation)
+                        if score > 90 and score > best_score:
+                            best_score = score
+                            corrected = correct_word
+            
+            corrected_words.append(corrected)
+        
+        result = ' '.join(corrected_words)
+        if result != text_lower:
+            logger.info(f"Spell corrected: '{text_lower}' -> '{result}'")
+        return result
+    
     async def initialize(self):
         """Initialize NLP engine"""
         self.initialized = True
@@ -54,20 +143,29 @@ class NLPEngine:
         normalized_text = self._normalize_text(text, has_arabic)
         logger.info(f"Normalized:  '{text}' -> '{normalized_text}'")
         
-        # Step 3: Detect language for response
+        # Step 3: Correct spelling for common typos
+        corrected_text = self._correct_spelling(normalized_text)
+        if corrected_text != normalized_text:
+            logger.info(f"Spell corrected: '{normalized_text}' -> '{corrected_text}'")
+            normalized_text = corrected_text
+        
+        # Step 4: Detect language for response
         language = "arabic" if has_arabic else self._detect_language(text)
         
-        # Step 4: Classify intent
+        # Step 5: Classify intent
         intent = self._classify_intent(normalized_text, context)
         
-        # Step 5: Extract food items
+        # Step 6: Extract food items
         food_items = self._extract_food_items(normalized_text)
         
-        # Step 6: Extract modifications
+        # Step 7: Extract modifications
         modifications = self._extract_modifications(normalized_text)
         
-        # Step 7: Extract quantities
+        # Step 8: Extract quantities
         quantities = self._extract_quantities(normalized_text)
+        
+        # Step 9: Calculate confidence score
+        confidence = self._calculate_confidence(normalized_text, food_items, intent)
         
         return ParsedQuery(
             intent=intent,
@@ -76,7 +174,8 @@ class NLPEngine:
             quantities=quantities,
             language_detected=language,
             original_text=text,
-            normalized_text=normalized_text
+            normalized_text=normalized_text,
+            confidence=confidence
         )
     
     def _has_arabic_script(self, text:  str) -> bool:
@@ -119,11 +218,20 @@ class NLPEngine:
         # Convert to lowercase
         result = result.lower()
         
-        # Handle Franco-Arabic numbers (for Franco text)
-        if self._is_franco_arabic(text):
-            franco_numbers = {'2':  'a', '3': 'a', '5': 'kh', '6': 't', '7': 'h', '8': 'q', '9': 's'}
+        # Handle Franco-Arabic numbers (for Franco text) - Improved mapping
+        if self._is_franco_arabic(text) or any(char in result for char in '23578'):
+            franco_numbers = {
+                '2': 'aa',  # More accurate: hamza/glottal stop → aa
+                '3': 'aa',  # 'ayn → aa
+                '5': 'kh',  # kha
+                '6': 't',   # ta
+                '7': 'h',   # ha
+                '8': 'gh',  # ghain
+                '9': 'q'    # qaf (sometimes 's' for sad)
+            }
             for num, letter in franco_numbers.items():
                 result = result.replace(num, letter)
+            logger.info(f"Franco converted: '{text}' -> '{result}'")
         
         # Clean up spaces
         result = ' '.join(result.split())
@@ -156,8 +264,18 @@ class NLPEngine:
         return Intent.QUERY_FOOD
     
     def _extract_food_items(self, text: str) -> List[str]:
-        """Extract food items from text"""
+        """Extract food items from text - improved for messy inputs"""
         text_lower = text.lower().strip()
+        
+        # Clean up common question patterns first
+        question_patterns = [
+            'how many cal in', 'how many calories in', 'how many calories',
+            'what are the calories', 'calories in', 'calories of', 'calories for',
+            'calorie count', 'what is', 'tell me about', 'i want', 'i need',
+            'give me', 'can i have', 'please', 'thanks', 'thank you'
+        ]
+        for pattern in question_patterns:
+            text_lower = text_lower.replace(pattern, ' ')
         
         # Handle modification patterns first
         modification_patterns = [
@@ -175,6 +293,14 @@ class NLPEngine:
         
         # Clean and return
         cleaned = self._clean_food_name(text_lower)
+        if not cleaned:
+            # If cleaning removed everything, try to extract any meaningful words
+            words = text_lower.split()
+            skip_words = {'the', 'a', 'an', 'in', 'of', 'for', 'calories', 'calorie', 'kcal', 'cal', 'how', 'many', 'much'}
+            meaningful = [w for w in words if w not in skip_words and len(w) > 2]
+            if meaningful:
+                cleaned = ' '.join(meaningful)
+        
         return [cleaned] if cleaned else [text_lower]
     
     def _clean_food_name(self, text: str) -> str:
@@ -333,3 +459,27 @@ class NLPEngine:
     def is_franco(self, text:  str) -> bool:
         """Check if text is Franco-Arabic"""
         return self._is_franco_arabic(text)
+    
+    def _calculate_confidence(self, normalized_text: str, food_items: List[str], intent: Intent) -> float:
+        """Calculate confidence score for the parsed query"""
+        confidence = 0.5  # Base confidence
+        
+        # Higher confidence if we extracted food items
+        if food_items and food_items[0]:
+            confidence += 0.2
+            
+            # Even higher if food item is in our vocabulary
+            food_text = food_items[0].lower()
+            if any(food_text in [key] + vals for key, vals in self.food_vocabulary.items()):
+                confidence += 0.2
+        
+        # Higher confidence for clear intents
+        if intent in [Intent.QUERY_FOOD, Intent.MODIFY_REMOVE, Intent.MODIFY_ADD]:
+            confidence += 0.1
+        
+        # Lower confidence for very short queries
+        if len(normalized_text.split()) < 2:
+            confidence -= 0.1
+        
+        # Ensure confidence is between 0 and 1
+        return max(0.0, min(1.0, confidence))
