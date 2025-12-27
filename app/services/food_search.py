@@ -93,6 +93,22 @@ class FoodSearchService:
         
         return index
     
+    def _normalize_item_name(self, name: str) -> List[str]:
+        """Normalize item name to list of words for matching"""
+        normalized = name.replace(',', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').lower()
+        return [w for w in normalized.split() if w]
+    
+    def _is_plural_match(self, singular: str, plural: str) -> bool:
+        """Check if singular form matches plural form"""
+        # Handle common plural patterns
+        if plural == singular + 's':  # apple -> apples
+            return True
+        if plural == singular + 'es':  # tomato -> tomatoes
+            return True
+        if len(singular) >= 2 and singular[-1] == 'y' and plural == singular[:-1] + 'ies':  # berry -> berries
+            return True
+        return False
+    
     def search(self, query:  str, country: str = "", top_k: int = 5) -> List[Tuple[Dict, str, float]]:
         """Search for food - prioritize USDA for single-word ingredient queries"""
         query_lower = query.lower().strip()
@@ -134,8 +150,7 @@ class FoodSearchService:
             # Search USDA ingredients with word-level matching
             word_matches = []
             for item in self.usda_index:
-                item_words = item["name"].replace(',', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').lower().split()
-                item_words = [w for w in item_words if w]  # Remove empty strings
+                item_words = self._normalize_item_name(item["name"])
                 
                 # Calculate base score
                 base_score = 0.0
@@ -145,8 +160,8 @@ class FoodSearchService:
                 if item_words and item_words[0] == query_lower:
                     base_score = 0.95
                     is_first_word_match = True
-                # Handle plural forms: "apple" matches "apples" (first word) - same score as exact
-                elif item_words and (item_words[0] == query_lower + 's' or item_words[0] == query_lower + 'es'):
+                # Handle plural forms: "apple" matches "apples", "berry" matches "berries"
+                elif item_words and self._is_plural_match(query_lower, item_words[0]):
                     base_score = 0.95  # Same as exact match
                     is_first_word_match = True
                 # GOOD: Query is a complete word in the name
@@ -205,6 +220,9 @@ class FoodSearchService:
                     return results[:top_k]
         
         # Step 3: Search dishes (for multi-word queries or if USDA search failed)
+        # Note: Reset results here because single-word queries only reach this point
+        # if no good USDA matches (score >= 0.75) were found. We prefer trying dish
+        # search over returning low-confidence USDA matches.
         results = []
         
         # Search dishes in selected country FIRST
@@ -240,7 +258,7 @@ class FoodSearchService:
             # First:  Find items where query is a WORD in the name (not just substring)
             word_matches = []
             for item in self.usda_index: 
-                item_words = item["name"].replace(',', ' ').replace('-', ' ').lower().split()
+                item_words = self._normalize_item_name(item["name"])
                 # Check if query matches the FIRST word (most relevant)
                 if item_words and item_words[0] == query_lower: 
                     word_matches.append((item, 0.95))
